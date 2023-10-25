@@ -10,3 +10,16 @@ Write ad-hoc transformations with evaluated Python source code.
 - Use [pre-commit](https://pre-commit.com/) to avoid errors before commit.
 - This repository was created with [this copier template](https://github.com/eccenca/cmem-plugin-template).
 
+## Usage
+
+Do not use in production!
+
+```
+eval $(cmemc -c seebi-testing.eccenca.dev config eval)
+task clean check deploy
+```
+
+😈
+
+![Usage](./usage.png)
+
