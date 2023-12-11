@@ -1,6 +1,6 @@
 # cmem-plugin-python
 
-Write ad-hoc transformations with evaluated Python source code.
+Write ad-hoc transformations and workflow tasks with Python.
 
 This is a plugin for [eccenca](https://eccenca.com) [Corporate Memory](https://documentation.eccenca.com).
 

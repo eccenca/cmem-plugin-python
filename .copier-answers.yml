@@ -1,10 +1,10 @@
 # Changes here will be overwritten by Copier
-_commit: v5.3.2-4-gfcbfe6f
+_commit: v6.0.1
 _src_path: gh:eccenca/cmem-plugin-template
 author_mail: sebastian.tramp@eccenca.com
 author_name: Sebastian Tramp
 github_page: ''
-project_description: Write ad-hoc transformations with evaluated Python source code.
+project_description: Write ad-hoc transformations and workflow tasks with Python.
 project_slug: python
 pypi: false
 
