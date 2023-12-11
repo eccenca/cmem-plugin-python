@@ -1,6 +1,5 @@
 """Plugin tests."""
 
-
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 
 from cmem_plugin_python.transform import PythonCodeTransformPlugin

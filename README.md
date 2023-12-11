@@ -15,7 +15,7 @@ Write ad-hoc transformations and workflow tasks with Python.
 Do not use in production!
 
 ```
-eval $(cmemc -c seebi-testing.eccenca.dev config eval)
+eval $(cmemc -c my-cmem config eval)
 task clean check deploy
 ```
 
