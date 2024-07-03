@@ -101,15 +101,15 @@ Here are some valid examples.
 If you do not specify any input ports, the default
 behavior is a flexible number of flexible schema input ports.
 
-```
+``` python
 {examples_init.no_input_ports}
 ```
 
-```
+``` python
 {examples_init.single_input_flexible}
 ```
 
-```
+``` python
 {examples_init.single_input_fixed}
 ```
 
@@ -132,7 +132,7 @@ If you do not specify the output port, the default behavior is a flexible schema
 In addition to input and output port specifications, you can provide additional data for
 the task execution phase by manipulating the `data` dictionary.
 
-```
+``` python
 data["my_schema"] = my_schema  # in case you used a schema example above
 data["output"] = ":-)"
 ```
