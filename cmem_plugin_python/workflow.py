@@ -166,14 +166,14 @@ Here are some valid examples:
 
 ### Using {cmem} APIs
 
-In order to access the {cmem} APIs the authentication environment can be initialized by the following lines:
+To access {cmem} APIs, initialize the authentication environment with the following code:
 
 ``` python
 from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 setup_cmempy_user_access(context.user)
 ```
 
-This will ensure all API requests are authenticated with the current user session.
+This ensures that all API requests are authenticated using the current user session.
 """
 
 
