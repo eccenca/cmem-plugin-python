@@ -81,6 +81,7 @@ for _ in range(1000):
 result = entity.Entities(entities=entities, schema=my_schema)
 """
 
+cmem = "Corporate Memory"
 documentation = f"""
 This workflow task allows the execution of arbitrary Python source code as a workflow task 😈
 
@@ -162,6 +163,17 @@ Here are some valid examples:
 ``` python
 {examples_execute.randoms}
 ```
+
+### Using {cmem} APIs
+
+In order to access the {cmem} APIs the authentication environment can be initialized by the following lines:
+
+``` python
+from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
+setup_cmempy_user_access(context.user)
+```
+
+This will ensure all API requests are authenticated with the current user session.
 """
 
 
