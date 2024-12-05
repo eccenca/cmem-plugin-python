@@ -173,7 +173,7 @@ from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 setup_cmempy_user_access(context.user)
 ```
 
-This ensures that all API requests are authenticated using the current user session.
+This ensures that all {cmem} API requests, made with `cmempy` are authenticated using the current user session.
 """
 
 
