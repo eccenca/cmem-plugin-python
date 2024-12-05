@@ -1,11 +1,12 @@
 """Python code workflow plugin module"""
-from collections.abc import Iterator, Sequence
+
+from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any
 
 from cmem_plugin_base.dataintegration.context import ExecutionContext
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
-from cmem_plugin_base.dataintegration.entity import Entities, Entity
+from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 
@@ -22,13 +23,13 @@ examples_init.no_input_ports = """# no input ports (empty list)
 # e.g. if you fetch data from the web
 from cmem_plugin_base.dataintegration import ports
 input_ports = ports.FixedNumberOfInputs([])"""
-examples_init.single_input_flexible = """# a single port with flexible schema
-# e.g. to process everything which comes in
+examples_init.single_input_flexible = """# A single port with flexible schema
+# e.g. to process everything that comes in
 from cmem_plugin_base.dataintegration import ports
 input_ports = ports.FixedNumberOfInputs(
     [ports.FlexibleSchemaPort()]
 )"""
-examples_init.single_input_fixed = """# a single port with a fixed schema
+examples_init.single_input_fixed = """# A single port with a fixed schema
 # e.g. to fetch data from a dataset
 from cmem_plugin_base.dataintegration import ports, entity
 my_schema = entity.EntitySchema(
@@ -44,7 +45,7 @@ input_ports = ports.FixedNumberOfInputs(
 examples_init.no_output = """# no output port
 # e.g. if you post data to the web
 output_port = None"""
-examples_init.fixed_output = """# an output port with fixed schema
+examples_init.fixed_output = """# An output port with a fixed schema
 from cmem_plugin_base.dataintegration import ports, entity
 my_schema = entity.EntitySchema(
     type_uri="urn:x-example:output",
@@ -63,7 +64,7 @@ try:
 except IndexError:
     raise ValueError("Please connect a task to the first input port.")
 """
-examples_execute.randoms = """# create 1000 random strings and output them with a custom schema
+examples_execute.randoms = """# Create 1000 random strings and output them with a custom schema
 from uuid import uuid4
 from secrets import token_hex
 from cmem_plugin_base.dataintegration import entity
@@ -87,17 +88,17 @@ This workflow task allows the execution of arbitrary Python source code as a wor
 
 The "configuration" is split into two code fields: initialization and execution.
 
-## Initialization
+## <a id="parameter_doc_init_code">Initialization</a>
 
-The initialization code is executed on task creation and update.
-It is optional and can be used to configure input and output ports of the task as well as to
+The initialization code is executed on task creation and task update.
+It is optional and can be used to configure the input and output ports of the task as well as to
 prepare data for the execution phase.
 Note that the execution scope of this code is empty.
-All used objects needs to be imported first.
+All used objects need to be imported first.
 
 ### Specify input ports
 
-In order to specify input ports, you have to define the variable `input_ports`.
+To specify input ports, you have to define the variable `input_ports`.
 Here are some valid examples.
 If you do not specify any input ports, the default
 behavior is a flexible number of flexible schema input ports.
@@ -116,7 +117,7 @@ behavior is a flexible number of flexible schema input ports.
 
 ### Specify the output port
 
-In order to specify the output port, you have to define the variable `output_port`.
+To specify the output port, you have to define the variable `output_port`.
 Here are some valid examples.
 If you do not specify the output port, the default behavior is a flexible schema output port.
 
@@ -138,7 +139,7 @@ data["my_schema"] = my_schema  # in case you used a schema example above
 data["output"] = ":-)"
 ```
 
-## Execution
+## <a id="parameter_doc_execute_code">Execution</a>
 
 The execution code is interpreted in the context of an executed workflow.
 The following variables are available in the scope of the code execution:
@@ -147,11 +148,11 @@ The following variables are available in the scope of the code execution:
    the to task in the workflow. Have a look at [the entities documentation]({docu_links.entities})
    for more information.
 - `context` - an `ExecutionContext` object, which holds information about the system,
-   the user the current task and more. Have a look
+   the user the current task, and more. Have a look at
    [the context object documentation]({docu_links.context}) for more information.
 - `data` - a `dict` of arbitrary data, which was optionally added by the initialization code.
 
-In order to provide data for the next workflow task in the workflow, a `result`
+To provide data for the next workflow task in the workflow, a `result`
 variable of type `Entities` needs to be prepared.
 
 Here are some valid examples:
@@ -187,15 +188,13 @@ the current user session.
     parameters=[
         PluginParameter(
             name="init_code",
-            label="Initialization",
+            label="Python source code for the initialization phase.",
             default_value="",
-            description="Python source code for the initialization phase (see documentation).",
         ),
         PluginParameter(
             name="execute_code",
-            label="Execution",
+            label="Python source code for the execution phase",
             default_value="",
-            description="Python source code for the execution phase (see documentation).",
         ),
     ],
 )
@@ -216,12 +215,11 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
             self.input_ports = scope["input_ports"]
         if "output_port" in scope:
             self.output_port = scope["output_port"]
-        self.data = scope["data"] if "data" in scope else {}
+        self.data = scope.get("data", {})
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
         """Start the plugin in workflow context."""
         self.log.info("Start doing bad things with custom code.")
         scope: dict[str, Any] = {"inputs": inputs, "context": context, "data": self.data}
         exec(str(self.execute_code), scope)  # nosec  # noqa: S102
-        result: Iterator[Entity] | None = scope["result"] if "result" in scope else None
-        return result
+        return scope.get("result")
