@@ -1,4 +1,5 @@
 """Python code transform plugin module"""
+
 from collections.abc import Sequence
 from typing import Any
 

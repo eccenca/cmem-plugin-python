@@ -1,1 +1,1 @@
-"""python - main package"""
+"""cmem-plugin-python"""
