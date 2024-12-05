@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - example code highlightning in documentation
 
+### Added
+
+- more documentation
+
 
 ## [1.0.1] 2023-12-11
 
