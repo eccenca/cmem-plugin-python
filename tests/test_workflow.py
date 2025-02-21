@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
+from cmem_plugin_base.testing import TestExecutionContext
 
 from cmem_plugin_python.workflow import PythonCodeWorkflowPlugin, examples_execute, examples_init
-from tests.utils import TestExecutionContext
 
 if TYPE_CHECKING:
     from cmem_plugin_base.dataintegration.entity import Entities
