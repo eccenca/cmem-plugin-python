@@ -5,10 +5,11 @@ from types import SimpleNamespace
 from typing import Any
 
 from cmem_plugin_base.dataintegration.context import ExecutionContext
-from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginParameter
+from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
+from pkg_resources import working_set
 
 docu_links = SimpleNamespace()
 docu_links.entities = (
@@ -185,6 +186,23 @@ the current user session.
     plugin_id="cmem_plugin_python-workflow",
     description="Run arbitrary Python code as a workflow task.",
     documentation=documentation,
+    actions=[
+        PluginAction(
+            name="validate_init_action",
+            label="Validate initialization phase",
+            description="Run the init code and report results.",
+        ),
+        PluginAction(
+            name="validate_execute_action",
+            label="Validate execution phase",
+            description="Run the execute code and report results.",
+        ),
+        PluginAction(
+            name="list_packages_action",
+            label="List Packages",
+            description="Show installed python packages with version.",
+        ),
+    ],
     parameters=[
         PluginParameter(
             name="init_code",
@@ -205,12 +223,24 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
     execute_code: str
     data: dict
 
+    def do_init(self) -> dict[str, Any]:
+        """Run initialization phase"""
+        scope: dict[str, Any] = {"data": {}}
+        exec(str(self.init_code), scope)  # nosec  # noqa: S102
+        return scope
+
+    def do_execute(
+        self, inputs: Sequence[Entities], context: ExecutionContext | None, data: dict
+    ) -> dict[str, Any]:
+        """Run execution phase"""
+        scope: dict[str, Any] = {"inputs": inputs, "context": context, "data": data}
+        exec(str(self.execute_code), scope)  # nosec  # noqa: S102
+        return scope
+
     def __init__(self, init_code: PythonCode, execute_code: PythonCode):
         self.init_code = str(init_code)
         self.execute_code = str(execute_code)
-        self.data = {}
-        scope: dict[str, Any] = {"data": self.data}
-        exec(str(self.init_code), scope)  # nosec  # noqa: S102
+        scope = self.do_init()
         if "input_ports" in scope:
             self.input_ports = scope["input_ports"]
         if "output_port" in scope:
@@ -220,6 +250,61 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
         """Start the plugin in workflow context."""
         self.log.info("Start doing bad things with custom code.")
-        scope: dict[str, Any] = {"inputs": inputs, "context": context, "data": self.data}
-        exec(str(self.execute_code), scope)  # nosec  # noqa: S102
+        scope = self.do_execute(inputs, context, self.data)
         return scope.get("result")
+
+    def validate_init_action(self) -> str:
+        """Run the init code and report results."""
+        scope = self.do_init()
+
+        output = "# Input ports definition (`input_ports`)\n"
+        if "input_ports" in scope:
+            output += "``` python\n"
+            output += f"{scope['input_ports']!r}\n"
+            output += "```\n"
+        else:
+            output += "No input ports defined.\n"
+
+        output += "# Output port definition (`output_port`)\n"
+        if "output_port" in scope:
+            output += "``` python\n"
+            output += f"{scope['output_port']!r}\n"
+            output += "```\n"
+        else:
+            output += "No output port defined.\n"
+
+        output += "# Data for the execution phase (`data`)\n"
+        if scope["data"]:
+            for key, value in scope["data"].items():
+                output += f"## `{key}`\n"
+                output += "``` python\n"
+                output += f"{value!r}\n"
+                output += "```\n"
+        else:
+            output += "No data provided.\n"
+        return output
+
+    def validate_execute_action(self) -> str:
+        """Run the execute code and report results."""
+        init_scope = self.do_init()
+        test_inputs = init_scope.get("test_inputs", [])
+        scope = self.do_execute(test_inputs, None, self.data)
+        if "result" in scope:
+            result: Entities = scope["result"]
+            output = "# Schema\n"
+            output += "``` python\n"
+            output += f"{result.schema!r}\n"
+            output += "```\n"
+            output += "# Entities (max. 10)\n"
+            for entity in list(result.entities)[:10]:
+                output += "``` python\n"
+                output += f"{entity.values!r}\n"
+                output += "```\n"
+        else:
+            output = "No result provided.\n"
+        return output
+
+    def list_packages_action(self) -> str:
+        """List Packages action"""
+        packages = sorted([f"- {i.key} ({i.version})" for i in working_set])
+        return "\n".join(packages)
