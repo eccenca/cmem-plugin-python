@@ -4,12 +4,15 @@ from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any
 
-from cmem_plugin_base.dataintegration.context import ExecutionContext
+from cmem.cmempy.workspace.python import list_packages
+from cmem_plugin_base.dataintegration.context import ExecutionContext, PluginContext
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
-from pkg_resources import working_set
+from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
+
+from cmem_plugin_python.package_management import install_missing_packages
 
 docu_links = SimpleNamespace()
 docu_links.entities = (
@@ -202,6 +205,11 @@ the current user session.
             label="List Packages",
             description="Show installed python packages with version.",
         ),
+        PluginAction(
+            name="install_missing_packages_action",
+            label="Install missing dependencies",
+            description="Install missing dependency packages.",
+        ),
     ],
     parameters=[
         PluginParameter(
@@ -214,6 +222,12 @@ the current user session.
             label="Python source code for the execution phase",
             default_value="",
         ),
+        PluginParameter(
+            name="dependencies",
+            label="Dependencies",
+            description="Comma-separated list of package names, e.g. 'pandas'.",
+            default_value="",
+        ),
     ],
 )
 class PythonCodeWorkflowPlugin(WorkflowPlugin):
@@ -222,24 +236,14 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
     init_code: str
     execute_code: str
     data: dict
+    dependencies: list[str]
 
-    def do_init(self) -> dict[str, Any]:
-        """Run initialization phase"""
-        scope: dict[str, Any] = {"data": {}}
-        exec(str(self.init_code), scope)  # nosec  # noqa: S102
-        return scope
-
-    def do_execute(
-        self, inputs: Sequence[Entities], context: ExecutionContext | None, data: dict
-    ) -> dict[str, Any]:
-        """Run execution phase"""
-        scope: dict[str, Any] = {"inputs": inputs, "context": context, "data": data}
-        exec(str(self.execute_code), scope)  # nosec  # noqa: S102
-        return scope
-
-    def __init__(self, init_code: PythonCode, execute_code: PythonCode):
+    def __init__(self, init_code: PythonCode, execute_code: PythonCode, dependencies: str = ""):
         self.init_code = str(init_code)
         self.execute_code = str(execute_code)
+        self.dependencies = (
+            [] if dependencies.strip() == "" else [_.strip() for _ in dependencies.split(",")]
+        )
         scope = self.do_init()
         if "input_ports" in scope:
             self.input_ports = scope["input_ports"]
@@ -247,11 +251,11 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
             self.output_port = scope["output_port"]
         self.data = scope.get("data", {})
 
-    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
-        """Start the plugin in workflow context."""
-        self.log.info("Start doing bad things with custom code.")
-        scope = self.do_execute(inputs, context, self.data)
-        return scope.get("result")
+    def do_init(self) -> dict[str, Any]:
+        """Run initialization phase"""
+        scope: dict[str, Any] = {"data": {}}
+        exec(str(self.init_code), scope)  # nosec  # noqa: S102
+        return scope
 
     def validate_init_action(self) -> str:
         """Run the init code and report results."""
@@ -284,6 +288,14 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
             output += "No data provided.\n"
         return output
 
+    def do_execute(
+        self, inputs: Sequence[Entities], context: ExecutionContext | None, data: dict
+    ) -> dict[str, Any]:
+        """Run execution phase"""
+        scope: dict[str, Any] = {"inputs": inputs, "context": context, "data": data}
+        exec(str(self.execute_code), scope)  # nosec  # noqa: S102
+        return scope
+
     def validate_execute_action(self) -> str:
         """Run the execute code and report results."""
         init_scope = self.do_init()
@@ -304,7 +316,28 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
             output = "No result provided.\n"
         return output
 
-    def list_packages_action(self) -> str:
+    def list_packages_action(self, context: PluginContext) -> str:
         """List Packages action"""
-        packages = sorted([f"- {i.key} ({i.version})" for i in working_set])
-        return "\n".join(packages)
+        setup_cmempy_user_access(context=context.user)
+        packages: list[dict[str, str]] = list_packages()
+        output = [f"- {package['name']} ({package['version']})" for package in packages]
+        return "\n".join(output)
+
+    def install_missing_packages_action(self, context: PluginContext) -> str:
+        """Install Missing Packages action"""
+        results = install_missing_packages(package_specs=self.dependencies, context=context.user)
+        output = []
+        for package, result in results.items():
+            output.append(f"# {package}\n\n")
+            output.append(f"{result.output}\n\n")
+        if len(output) == 0:
+            output.append("No packages installed.")
+        return "\n".join(output)
+
+    def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
+        """Start the plugin in workflow context."""
+        self.log.info("Start doing bad things with custom code.")
+        if self.dependencies:
+            install_missing_packages(package_specs=self.dependencies, context=context.user)
+        scope = self.do_execute(inputs, context, self.data)
+        return scope.get("result")

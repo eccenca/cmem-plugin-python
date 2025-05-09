@@ -2,7 +2,7 @@
 
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 
-from cmem_plugin_python.transform import PythonCodeTransformPlugin
+from cmem_plugin_python.test_transform_operator import PythonCodeTransformPlugin
 
 
 def test_transform_execution_with_inputs() -> None:

@@ -9,10 +9,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Added
 
-- Custom Action: Validate initialization phase - run the init code and report results
-- Custom Action: Validate execution phase - run the execute code and report results
-- Custom Action: List Packages - Show installed python packages with version
-- more documentation
+- Python Code Workflow Task
+  - Custom Action: Validate initialization phase - run the init code and report results
+  - Custom Action: Validate execution phase - run the execute code and report results
+  - Custom Action: List Packages - Show installed python packages with version
+  - Custom Action: Install Missing Dependencies - Install missing dependency packages
+  - Parameter: Dependencies - Comma-separated list of package names
+  - more documentation
 
 ### Fixed
 
