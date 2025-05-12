@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
+## [1.2.0] 2025-05-12
 
 ### Added
 
@@ -15,7 +15,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   - Custom Action: List Packages - Show installed python packages with version
   - Custom Action: Install Missing Dependencies - Install missing dependency packages
   - Parameter: Dependencies - Comma-separated list of package names
-  - more documentation
+
+
+## [1.1.0] 2024-12-05
+
+### Added
+
+- more documentation
 
 ### Fixed
 
