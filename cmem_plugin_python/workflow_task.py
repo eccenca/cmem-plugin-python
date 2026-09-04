@@ -19,7 +19,7 @@ docu_links.entities = (
     "https://documentation.eccenca.com/latest/develop/python-plugins/development/#entities"
 )
 docu_links.context = (
-    "https://documentation.eccenca.com/23.3/develop/python-plugins/development/#context-objects"
+    "https://documentation.eccenca.com/latest/develop/python-plugins/development/#context-objects"
 )
 
 examples_init = SimpleNamespace()
@@ -60,6 +60,23 @@ my_schema = entity.EntitySchema(
 )
 output_port = ports.FixedSchemaPort(schema=my_schema)"""
 
+examples_init.test_inputs = """# entities used by the "Validate execution phase" action
+from cmem_plugin_base.dataintegration import entity
+test_inputs = [
+    entity.Entities(
+        entities=[
+            entity.Entity(uri="urn:uuid:test", values=[["Example"], ["A test entity"]])
+        ],
+        schema=entity.EntitySchema(
+            type_uri="urn:x-example:output",
+            paths=[
+                entity.EntityPath("name"),
+                entity.EntityPath("description")
+            ]
+        )
+    )
+]"""
+
 examples_execute = SimpleNamespace()
 examples_execute.take_first = """# take the entities from the first input port
 # and copy it to the output port
@@ -86,16 +103,29 @@ for _ in range(1000):
 result = entity.Entities(entities=entities, schema=my_schema)
 """
 
+cmem_full = "eccenca Corporate Memory"
 cmem = "Corporate Memory"
 documentation = f"""
-This workflow task allows the execution of arbitrary Python source code as a workflow task 😈
+This workflow task executes arbitrary Python source code as a step of a workflow 😈
 
-The "configuration" is split into two code fields: initialization and execution.
+The code lives on the task itself and is split into two phases: initialization code, which runs
+whenever the task is loaded and determines the shape of the task, and execution code, which runs
+when the workflow reaches the task.
+
+Everything that flows through the task is decided by that code. The initialization code declares
+which input ports the task offers and whether it provides an output port at all; the execution
+code receives the entities that arrived on those ports and prepares the entities handed to the
+next task. Without an explicit declaration, the task accepts a flexible number of flexible schema
+inputs and provides a flexible schema output.
+
+Use it to prototype a step that no shipped task covers, and turn the result into a proper plugin
+once the code has settled. To run Python on single values inside a transformation instead of on a
+whole workflow step, use the **Python Code** transform operator.
 
 ## <a id="parameter_doc_init_code">Initialization</a>
 
-The initialization code is executed on task creation and task update.
-It is optional and can be used to configure the input and output ports of the task as well as to
+The initialization code is optional.
+It is used to configure the input and output ports of the task as well as to
 prepare data for the execution phase.
 Note that the execution scope of this code is empty.
 All used objects need to be imported first.
@@ -143,13 +173,24 @@ data["my_schema"] = my_schema  # in case you used a schema example above
 data["output"] = ":-)"
 ```
 
+### Test input
+
+The **Validate execution phase** action has no workflow around it and therefore no incoming
+entities of its own.
+It uses whatever the initialization code leaves in the variable `test_inputs`, a `Sequence` of
+`Entities`, and runs with no inputs at all when that variable is not defined.
+
+``` python
+{examples_init.test_inputs}
+```
+
 ## <a id="parameter_doc_execute_code">Execution</a>
 
 The execution code is interpreted in the context of an executed workflow.
 The following variables are available in the scope of the code execution:
 
 - `inputs` - a `Sequence` of `Entities`, which represents the data which will be passed to
-   the to task in the workflow. Have a look at [the entities documentation]({docu_links.entities})
+   the task in the workflow. Have a look at [the entities documentation]({docu_links.entities})
    for more information.
 - `context` - an `ExecutionContext` object, which holds information about the system,
    the user the current task, and more. Have a look at
@@ -158,6 +199,7 @@ The following variables are available in the scope of the code execution:
 
 To provide data for the next workflow task in the workflow, a `result`
 variable of type `Entities` needs to be prepared.
+A task which does not prepare a `result` hands nothing on to the next task.
 
 Here are some valid examples:
 
@@ -169,17 +211,47 @@ Here are some valid examples:
 {examples_execute.randoms}
 ```
 
-### Using {cmem} APIs
+### Using {cmem_full} APIs
 
-To access {cmem} APIs, initialize the authentication environment with the following code:
+To access {cmem} APIs, build a client from the execution context:
 
 ``` python
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
-setup_cmempy_user_access(context.user)
+from cmem_plugin_base.dataintegration.client import get_client
+client = get_client(context)
 ```
 
-This ensures that all {cmem} API requests, made with `cmempy` are authenticated using
-the current user session.
+The client takes its connection URLs from the deployment the workflow runs in and authenticates
+every request as the user who started the workflow.
+
+The predecessor of this, `setup_cmempy_user_access(context.user)` together with the `cmempy`
+package, is deprecated and will be removed with `cmempy`.
+
+## Caveats
+
+The code is executed without a sandbox, in the process which runs the workflow and with the
+permissions of that process.
+Whoever may edit this task may run whatever that process can run, so treat access to it
+accordingly.
+
+The initialization code runs every time the task is loaded, not only when it is saved: before
+each workflow run and before each of the actions above.
+Code with side effects therefore runs far more often than expected, and an error in it makes the
+whole task unusable rather than only failing a single run.
+
+**Validate execution phase** runs the execution code outside of a workflow.
+There is no execution context in that scope - `context` is `None` - and the action reports at
+most the first ten entities of the result.
+Code which uses `context` unconditionally fails there while working in a real run.
+
+Neither validation action installs dependencies.
+Packages are installed by the workflow run itself and by the **Install missing dependencies**
+action, so validate code which imports them only after installing.
+
+Dependencies are matched by package name only.
+A package which is already installed is left at the version which is there, and a version
+specifier is not understood and leads to a fresh installation attempt on every run.
+A failed installation does not stop the task: execution continues and the code fails later, at
+the import.
 """
 
 
@@ -193,39 +265,44 @@ the current user session.
         PluginAction(
             name="validate_init_action",
             label="Validate initialization phase",
-            description="Run the init code and report results.",
+            description="Run the initialization code and report the ports and data it declares.",
         ),
         PluginAction(
             name="validate_execute_action",
             label="Validate execution phase",
-            description="Run the execute code and report results.",
+            description="Run the execution code outside of a workflow and report what it returns.",
         ),
         PluginAction(
             name="list_packages_action",
-            label="List Packages",
-            description="Show installed python packages with version.",
+            label="List packages",
+            description="List the Python packages installed in the deployment, with versions.",
         ),
         PluginAction(
             name="install_missing_packages_action",
             label="Install missing dependencies",
-            description="Install missing dependency packages.",
+            description="Install the declared dependencies which are not installed yet.",
         ),
     ],
     parameters=[
         PluginParameter(
             name="init_code",
-            label="Python source code for the initialization phase.",
+            label="Initialization Code",
+            description="Python code which shapes the task and runs whenever the task is loaded."
+            " Leaving it empty keeps the default ports.",
             default_value="",
         ),
         PluginParameter(
             name="execute_code",
-            label="Python source code for the execution phase",
+            label="Execution Code",
+            description="Python code which runs when the workflow reaches this task.",
             default_value="",
         ),
         PluginParameter(
             name="dependencies",
             label="Dependencies",
-            description="Comma-separated list of package names, e.g. 'pandas'.",
+            description="Comma-separated package names which are installed into the deployment"
+            " before the execution code runs, e.g. 'pandas, requests'. Version specifiers are"
+            " not supported.",
             default_value="",
         ),
     ],

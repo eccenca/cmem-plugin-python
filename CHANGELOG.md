@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Changed
 
 - updated dependencies and template
+- reworked the user facing documentation of both tasks
+  - Python Code workflow task: describes the ports, the `test_inputs` variable of the
+    **Validate execution phase** action, and the caveats around sandboxing, repeated
+    initialization and dependency installation
+  - Python Code transform operator: added a task description, a working example and the
+    caveats around scope, packages and repeated execution
+  - added descriptions to the initialization code, execution code and source code parameters
+  - the documented way to reach the Corporate Memory APIs is now `get_client` instead of the
+    deprecated `setup_cmempy_user_access`
+  - fixed the stale link to the context object documentation
 
 ## [1.2.1] 2025-09-18
 
