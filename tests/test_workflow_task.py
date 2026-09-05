@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from cmem.cmempy.workspace.python import list_packages, uninstall_package
+from cmem_client.client import Client
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.testing import TestExecutionContext, TestPluginContext
 
@@ -12,11 +12,18 @@ from cmem_plugin_python.workflow_task import (
     examples_execute,
     examples_init,
 )
+from tests.utils import needs_cmem
 
 if TYPE_CHECKING:
     from cmem_plugin_base.dataintegration.entity import Entities
 
 
+def uninstall(package_name: str) -> None:
+    """Uninstall a package, whether or not it is currently installed"""
+    Client.from_env().python_packages.delete_item(package_name, skip_if_missing=True)
+
+
+@needs_cmem
 def test_workflow_execution() -> None:
     """Test with inputs"""
     init_code = PythonCode(
@@ -41,6 +48,7 @@ def test_example_init_code() -> None:
         PythonCodeWorkflowPlugin(init_code=PythonCode(init_code), execute_code=PythonCode(""))
 
 
+@needs_cmem
 def test_example_execution() -> None:
     """Test execution of examples"""
     # run 'randoms' first, then feed output to `take_first`
@@ -62,16 +70,17 @@ def test_example_execution() -> None:
     assert len(list(take_first_result.entities)) == random_size
 
 
+@needs_cmem
 def test_example_execution_with_dependencies() -> None:
     """Test execution of examples"""
     example_package = "example-pypi-package"
     pandas_package = "pandas"
     dependencies = f"{example_package},{pandas_package}"
 
-    uninstall_package(example_package)
-    uninstall_package(pandas_package)
+    uninstall(example_package)
+    uninstall(pandas_package)
 
-    packages = [package["name"] for package in list_packages()]
+    packages = Client.from_env().python_packages
     assert example_package not in packages
     assert pandas_package not in packages
     randoms = PythonCodeWorkflowPlugin(
@@ -80,13 +89,14 @@ def test_example_execution_with_dependencies() -> None:
         dependencies=dependencies,
     )
     randoms.execute(inputs=[], context=TestExecutionContext())
-    packages = [package["name"] for package in list_packages()]
+    packages = Client.from_env().python_packages
     assert example_package in packages
     assert pandas_package in packages
-    uninstall_package(example_package)
-    uninstall_package(pandas_package)
+    uninstall(example_package)
+    uninstall(pandas_package)
 
 
+@needs_cmem
 def test_list_packages_action() -> None:
     """List packages action"""
     assert "cmem-plugin-base" in PythonCodeWorkflowPlugin(
@@ -182,10 +192,11 @@ def test_validate_execute_action_fail() -> None:
         ).validate_execute_action()
 
 
+@needs_cmem
 def test_install_missing_packages_action() -> None:
     """Test install_missing_packages_action action"""
     package_name = "example-pypi-package"
-    uninstall_package(package_name)
+    uninstall(package_name)
     plugin = PythonCodeWorkflowPlugin(
         init_code=PythonCode(""), execute_code=PythonCode(""), dependencies=package_name
     )
@@ -195,7 +206,7 @@ def test_install_missing_packages_action() -> None:
     assert f"Package already installed: {package_name}" in plugin.install_missing_packages_action(
         context=TestPluginContext()
     )
-    uninstall_package(package_name)
+    uninstall(package_name)
 
     plugin = PythonCodeWorkflowPlugin(init_code=PythonCode(""), execute_code=PythonCode(""))
     assert "No packages installed" in plugin.install_missing_packages_action(

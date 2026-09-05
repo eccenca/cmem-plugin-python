@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
+## [Unreleased]
+
+### Changed
+
+- updated dependencies and template
+- reworked the user facing documentation of both tasks
+  - Python Code workflow task: describes the ports, the `test_inputs` variable of the
+    **Validate execution phase** action, and the caveats around sandboxing, repeated
+    initialization and dependency installation
+  - Python Code transform operator: added a task description, a working example and the
+    caveats around scope, packages and repeated execution
+  - added descriptions to the initialization code, execution code and source code parameters
+  - the documented way to reach the Corporate Memory APIs is now `get_client` instead of the
+    deprecated `setup_cmempy_user_access`
+  - fixed the stale link to the context object documentation
+- the plugin talks to the deployment through `cmem-client` only - the deprecated
+  `cmem-cmempy` dependency and all `setup_cmempy_user_access` calls are gone
+
+### Fixed
+
+- the **Install missing dependencies** action reports the installed version of an
+  already installed package instead of repeating its name
+
 ## [1.2.1] 2025-09-18
 
 ### Fixed
