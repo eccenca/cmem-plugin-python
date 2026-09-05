@@ -4,13 +4,12 @@ from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any
 
-from cmem.cmempy.workspace.python import list_packages
+from cmem_plugin_base.dataintegration.client import get_client
 from cmem_plugin_base.dataintegration.context import ExecutionContext, PluginContext
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
 from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
-from cmem_plugin_base.dataintegration.utils import setup_cmempy_user_access
 
 from cmem_plugin_python.package_management import install_missing_packages
 
@@ -222,9 +221,9 @@ client = get_client(context)
 
 The client takes its connection URLs from the deployment the workflow runs in and authenticates
 every request as the user who started the workflow.
-
-The predecessor of this, `setup_cmempy_user_access(context.user)` together with the `cmempy`
-package, is deprecated and will be removed with `cmempy`.
+What it offers is documented with
+[cmem-client](https://pypi.org/project/cmem-client/), which is installed alongside
+`cmem-plugin-base`.
 
 ## Caveats
 
@@ -395,14 +394,15 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
 
     def list_packages_action(self, context: PluginContext) -> str:
         """List Packages action"""
-        setup_cmempy_user_access(context=context.user)
-        packages: list[dict[str, str]] = list_packages()
-        output = [f"- {package['name']} ({package['version']})" for package in packages]
+        packages = get_client(context).python_packages
+        output = [f"- {name} ({package.version})" for name, package in packages.items()]
         return "\n".join(output)
 
     def install_missing_packages_action(self, context: PluginContext) -> str:
         """Install Missing Packages action"""
-        results = install_missing_packages(package_specs=self.dependencies, context=context.user)
+        results = install_missing_packages(
+            package_specs=self.dependencies, client=get_client(context)
+        )
         output = []
         for package, result in results.items():
             output.append(f"# {package}\n\n")
@@ -415,6 +415,6 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
         """Start the plugin in workflow context."""
         self.log.info("Start doing bad things with custom code.")
         if self.dependencies:
-            install_missing_packages(package_specs=self.dependencies, context=context.user)
+            install_missing_packages(package_specs=self.dependencies, client=get_client(context))
         scope = self.do_execute(inputs, context, self.data)
         return scope.get("result")

@@ -20,6 +20,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   - the documented way to reach the Corporate Memory APIs is now `get_client` instead of the
     deprecated `setup_cmempy_user_access`
   - fixed the stale link to the context object documentation
+- the plugin talks to the deployment through `cmem-client` only - the deprecated
+  `cmem-cmempy` dependency and all `setup_cmempy_user_access` calls are gone
+
+### Fixed
+
+- the **Install missing dependencies** action reports the installed version of an
+  already installed package instead of repeating its name
 
 ## [1.2.1] 2025-09-18
 
