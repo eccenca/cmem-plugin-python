@@ -173,6 +173,36 @@ def test_validate_execute_action() -> None:
     )
 
 
+def test_validate_execute_action_with_none_result() -> None:
+    """Test Validate execute action with an explicit result of None"""
+    assert (
+        "No result provided"
+        in PythonCodeWorkflowPlugin(
+            init_code=PythonCode(""),
+            execute_code=PythonCode("result = None"),
+        ).validate_execute_action()
+    )
+
+
+def test_validate_execute_action_resets_data() -> None:
+    """Test that the action starts from the data of a fresh initialization run"""
+    counting_code = PythonCode(
+        """from cmem_plugin_base.dataintegration import entity
+data["count"] += 1
+result = entity.Entities(
+    entities=[entity.Entity(uri="urn:x-example:run", values=[[str(data["count"])]])],
+    schema=entity.EntitySchema(
+        type_uri="urn:x-example:count", paths=[entity.EntityPath("count")]
+    ),
+)"""
+    )
+    plugin = PythonCodeWorkflowPlugin(
+        init_code=PythonCode('data["count"] = 0'), execute_code=counting_code
+    )
+    for _ in range(3):
+        assert "['1']" in plugin.validate_execute_action()
+
+
 def test_validate_execute_action_fail() -> None:
     """Test Validate execute action fails"""
     with pytest.raises(SyntaxError, match=r"'\[' was never closed"):
