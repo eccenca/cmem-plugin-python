@@ -6,6 +6,7 @@ import pytest
 from cmem_client.client import Client
 
 from cmem_plugin_python.package_management import install_missing_packages
+from tests.utils import needs_cmem
 
 PACKAGE_NAME = "example-pypi-package"
 
@@ -28,6 +29,7 @@ def uninstalled_package() -> Iterator[str]:
     uninstall(PACKAGE_NAME)
 
 
+@needs_cmem
 def test_install_missing_packages_success(uninstalled_package: str) -> None:
     """Test installation of missing packages"""
     package_name = uninstalled_package

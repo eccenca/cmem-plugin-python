@@ -12,6 +12,7 @@ from cmem_plugin_python.workflow_task import (
     examples_execute,
     examples_init,
 )
+from tests.utils import needs_cmem
 
 if TYPE_CHECKING:
     from cmem_plugin_base.dataintegration.entity import Entities
@@ -22,6 +23,7 @@ def uninstall(package_name: str) -> None:
     Client.from_env().python_packages.delete_item(package_name, skip_if_missing=True)
 
 
+@needs_cmem
 def test_workflow_execution() -> None:
     """Test with inputs"""
     init_code = PythonCode(
@@ -46,6 +48,7 @@ def test_example_init_code() -> None:
         PythonCodeWorkflowPlugin(init_code=PythonCode(init_code), execute_code=PythonCode(""))
 
 
+@needs_cmem
 def test_example_execution() -> None:
     """Test execution of examples"""
     # run 'randoms' first, then feed output to `take_first`
@@ -67,6 +70,7 @@ def test_example_execution() -> None:
     assert len(list(take_first_result.entities)) == random_size
 
 
+@needs_cmem
 def test_example_execution_with_dependencies() -> None:
     """Test execution of examples"""
     example_package = "example-pypi-package"
@@ -92,6 +96,7 @@ def test_example_execution_with_dependencies() -> None:
     uninstall(pandas_package)
 
 
+@needs_cmem
 def test_list_packages_action() -> None:
     """List packages action"""
     assert "cmem-plugin-base" in PythonCodeWorkflowPlugin(
@@ -187,6 +192,7 @@ def test_validate_execute_action_fail() -> None:
         ).validate_execute_action()
 
 
+@needs_cmem
 def test_install_missing_packages_action() -> None:
     """Test install_missing_packages_action action"""
     package_name = "example-pypi-package"
