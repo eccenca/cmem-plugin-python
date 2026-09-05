@@ -249,8 +249,11 @@ action, so validate code which imports them only after installing.
 Dependencies are matched by package name only.
 A package which is already installed is left at the version which is there, and a version
 specifier is not understood and leads to a fresh installation attempt on every run.
-A failed installation does not stop the task: execution continues and the code fails later, at
-the import.
+
+An installation which fails stops the task before the execution code runs at all, because the
+deployment rejects the request and the error is not caught.
+A misspelled dependency therefore fails the workflow run rather than the import, and the
+**Install missing dependencies** action reports the error instead of its per package output.
 """
 
 
@@ -376,9 +379,11 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
         """Run the execute code and report results."""
         init_scope = self.do_init()
         test_inputs = init_scope.get("test_inputs", [])
-        scope = self.do_execute(test_inputs, None, self.data)
-        if "result" in scope:
-            result: Entities = scope["result"]
+        # the data of the fresh init scope, not self.data: the constructor's dict is mutated by
+        # every run of the execution code, so re-using it accumulates across action calls
+        scope = self.do_execute(test_inputs, None, init_scope.get("data", {}))
+        result: Entities | None = scope.get("result")
+        if result is not None:
             output = "# Schema\n"
             output += "``` python\n"
             output += f"{result.schema!r}\n"

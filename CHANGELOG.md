@@ -22,11 +22,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   - fixed the stale link to the context object documentation
 - the plugin talks to the deployment through `cmem-client` only - the deprecated
   `cmem-cmempy` dependency and all `setup_cmempy_user_access` calls are gone
+  - **breaking:** `setup_cmempy_user_access` also set `OAUTH_GRANT_TYPE` and
+    `OAUTH_ACCESS_TOKEN` in the environment of the whole process, which task code
+    calling `cmem.cmempy.*` could rely on without setting up access itself. That side
+    effect is gone, so such code now has to authenticate on its own - the documented
+    way is `get_client(context)`
 
 ### Fixed
 
 - the **Install missing dependencies** action reports the installed version of an
   already installed package instead of repeating its name
+- the **Validate execution phase** action no longer fails with an `AttributeError`
+  when the execution code assigns `result = None`, which is the documented way of
+  handing nothing to the next task
+- the **Validate execution phase** action starts from the `data` its initialization
+  code builds, instead of carrying the mutations of earlier action runs
+- the documented behavior of a failed dependency installation: it stops the task
+  before the execution code runs, rather than letting the import fail later
 
 ## [1.2.1] 2025-09-18
 

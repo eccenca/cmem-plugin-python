@@ -6,7 +6,7 @@ Do not use in production!
 
 ```
 eval $(cmemc -c my-cmem config eval)
-task clean check plugin:install
+task clean check install
 ```
 
 😈
