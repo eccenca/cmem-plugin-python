@@ -11,7 +11,11 @@ from cmem_plugin_base.dataintegration.entity import Entities
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 
-from cmem_plugin_python.package_management import install_missing_packages
+from cmem_plugin_python.package_management import (
+    InstallationResult,
+    format_installation_results,
+    install_missing_packages,
+)
 
 docu_links = SimpleNamespace()
 docu_links.entities = (
@@ -246,6 +250,8 @@ Neither validation action installs dependencies.
 Packages are installed by the workflow run itself and by the **Install missing dependencies**
 action, so validate code which imports them only after installing.
 
+## <a id="parameter_doc_dependencies">Dependencies</a>
+
 Dependencies are matched by package name only.
 A package which is already installed is left at the version which is there, and a version
 specifier is not understood and leads to a fresh installation attempt on every run.
@@ -408,18 +414,31 @@ class PythonCodeWorkflowPlugin(WorkflowPlugin):
         results = install_missing_packages(
             package_specs=self.dependencies, client=get_client(context)
         )
-        output = []
+        return format_installation_results(results)
+
+    def log_installation_results(self, results: dict[str, InstallationResult]) -> None:
+        """Log what the installation of the declared dependencies reported.
+
+        An installation which answers with an error does not raise, so without this the
+        code fails later at the import with nothing in the log to explain why.
+        """
         for package, result in results.items():
-            output.append(f"# {package}\n\n")
-            output.append(f"{result.output}\n\n")
-        if len(output) == 0:
-            output.append("No packages installed.")
-        return "\n".join(output)
+            if not result.success:
+                self.log.error(f"Installation of {package} failed: {result.output}")
+            elif result.plugin_errors:
+                self.log.warning(
+                    f"Package {package} was installed, but plugins failed to register:"
+                    f" {', '.join(result.plugin_errors)}"
+                )
 
     def execute(self, inputs: Sequence[Entities], context: ExecutionContext) -> Entities | None:
         """Start the plugin in workflow context."""
         self.log.info("Start doing bad things with custom code.")
         if self.dependencies:
-            install_missing_packages(package_specs=self.dependencies, client=get_client(context))
+            self.log_installation_results(
+                install_missing_packages(
+                    package_specs=self.dependencies, client=get_client(context)
+                )
+            )
         scope = self.do_execute(inputs, context, self.data)
         return scope.get("result")

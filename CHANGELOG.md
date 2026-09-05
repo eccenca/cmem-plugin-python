@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ### Changed
 
 - updated dependencies and template
+  - **breaking:** the package now requires Python 3.13, up from 3.11, so it no longer
+    installs into a deployment which runs an older interpreter
+- renamed the labels a user sees: the code parameters are now **Initialization Code** and
+  **Execution Code** rather than a sentence each, and the action is **List packages**
+- the shipped default of the transform operator hands the incoming values on unchanged,
+  instead of assigning a single string, which DataIntegration passed on as one value per
+  character
 - reworked the user facing documentation of both tasks
   - Python Code workflow task: describes the ports, the `test_inputs` variable of the
     **Validate execution phase** action, and the caveats around sandboxing, repeated
@@ -39,6 +46,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
   code builds, instead of carrying the mutations of earlier action runs
 - the documented behavior of a failed dependency installation: it stops the task
   before the execution code runs, rather than letting the import fail later
+- an installation which reports an error is logged, and plugins which fail to register
+  after it are logged and shown by the **Install missing dependencies** action, instead
+  of being discarded so that only the later import error was visible
+- the **Dependencies** and **Source Code** parameters link to their documentation, which
+  the missing anchors kept out of reach
+- the documentation of the transform operator no longer claims the code scope holds
+  nothing but `inputs`: it holds the Python builtins as well
+- an already installed package whose version the deployment does not report is no longer
+  announced as `(None)`
 
 ## [1.2.1] 2025-09-18
 

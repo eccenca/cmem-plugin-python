@@ -10,20 +10,27 @@ from cmem_plugin_base.dataintegration.description import (
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.dataintegration.plugins import TransformPlugin
 
-EXAMPLE_CODE = """result = str(inputs) """
+EXAMPLE_CODE = """# hand the values of the first input on unchanged
+result = list(inputs[0])"""
 
-documentation = """
+EXAMPLE_UPPERCASE = """# uppercase every value which arrives on the first input
+result = [value.upper() for value in inputs[0]]"""
+
+documentation = f"""
 This transform operator executes arbitrary Python source code inside of a transformation 😈
+
+## <a id="parameter_doc_source_code">Source code</a>
 
 The code receives `inputs`, a `Sequence` of `Sequence[str]`: the outer sequence holds one entry
 per operator connected to the input, the inner one the values that operator produced.
 It has to assign a `Sequence[str]` to the variable `result`, which becomes the values this
 operator passes on.
 A run which leaves `result` undefined fails.
+A single string is a `Sequence[str]` as well, so assigning one hands on its characters as
+separate values - wrap it in a list.
 
 ``` python
-# uppercase every value which arrives on the first input
-result = [value.upper() for value in inputs[0]]
+{EXAMPLE_UPPERCASE}
 ```
 
 Use it to prototype a conversion that none of the shipped operators covers, and turn the result
@@ -38,7 +45,8 @@ permissions of that process.
 Whoever may edit this operator may run whatever that process can run, so treat access to it
 accordingly.
 
-The scope of the code holds nothing but `inputs`.
+The scope of the code holds nothing but `inputs` and the Python builtins, which is what
+makes the sandbox warning above matter: everything reachable from `import` is reachable here.
 There is no execution context, so the code can neither authenticate against the
 eccenca Corporate Memory APIs nor write to the log of the running activity.
 

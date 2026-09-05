@@ -90,7 +90,8 @@ deployment configured in `.env`.
 
 ## Lint
 
-`ruff` runs with `select = ["ALL"]`. The two `exec()` calls carry
+`ruff` runs with `select = ["ALL"]`. The three `exec()` calls - two in
+`workflow_task.py`, one in `test_transform_operator.py` - carry
 `# nosec  # noqa: S102`, which is the one sanctioned suppression in this
 package: the rule forbids exactly what the plugin exists to do. Do not add
 further `noqa` comments or extend the `ignore` list to make a check pass.

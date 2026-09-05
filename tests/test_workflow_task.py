@@ -7,6 +7,7 @@ from cmem_client.client import Client
 from cmem_plugin_base.dataintegration.parameter.code import PythonCode
 from cmem_plugin_base.testing import TestExecutionContext, TestPluginContext
 
+from cmem_plugin_python.package_management import InstallationResult
 from cmem_plugin_python.workflow_task import (
     PythonCodeWorkflowPlugin,
     examples_execute,
@@ -16,11 +17,6 @@ from tests.utils import needs_cmem
 
 if TYPE_CHECKING:
     from cmem_plugin_base.dataintegration.entity import Entities
-
-
-def uninstall(package_name: str) -> None:
-    """Uninstall a package, whether or not it is currently installed"""
-    Client.from_env().python_packages.delete_item(package_name, skip_if_missing=True)
 
 
 @needs_cmem
@@ -71,29 +67,25 @@ def test_example_execution() -> None:
 
 
 @needs_cmem
-def test_example_execution_with_dependencies() -> None:
-    """Test execution of examples"""
-    example_package = "example-pypi-package"
-    pandas_package = "pandas"
-    dependencies = f"{example_package},{pandas_package}"
-
-    uninstall(example_package)
-    uninstall(pandas_package)
-
+def test_example_execution_with_dependencies(uninstalled_package: str) -> None:
+    """Test execution of examples with declared dependencies"""
+    # the second dependency is a package the deployment has anyway, which covers the
+    # already installed branch without taking a package away from other users
+    installed_package = "cmem-plugin-base"
     packages = Client.from_env().python_packages
-    assert example_package not in packages
-    assert pandas_package not in packages
+    assert uninstalled_package not in packages
+    assert installed_package in packages
+
     randoms = PythonCodeWorkflowPlugin(
         init_code=PythonCode(""),
         execute_code=PythonCode(examples_execute.randoms),
-        dependencies=dependencies,
+        dependencies=f"{uninstalled_package},{installed_package}",
     )
     randoms.execute(inputs=[], context=TestExecutionContext())
+
     packages = Client.from_env().python_packages
-    assert example_package in packages
-    assert pandas_package in packages
-    uninstall(example_package)
-    uninstall(pandas_package)
+    assert uninstalled_package in packages
+    assert installed_package in packages
 
 
 @needs_cmem
@@ -223,10 +215,9 @@ def test_validate_execute_action_fail() -> None:
 
 
 @needs_cmem
-def test_install_missing_packages_action() -> None:
+def test_install_missing_packages_action(uninstalled_package: str) -> None:
     """Test install_missing_packages_action action"""
-    package_name = "example-pypi-package"
-    uninstall(package_name)
+    package_name = uninstalled_package
     plugin = PythonCodeWorkflowPlugin(
         init_code=PythonCode(""), execute_code=PythonCode(""), dependencies=package_name
     )
@@ -236,9 +227,30 @@ def test_install_missing_packages_action() -> None:
     assert f"Package already installed: {package_name}" in plugin.install_missing_packages_action(
         context=TestPluginContext()
     )
-    uninstall(package_name)
 
     plugin = PythonCodeWorkflowPlugin(init_code=PythonCode(""), execute_code=PythonCode(""))
     assert "No packages installed" in plugin.install_missing_packages_action(
         context=TestPluginContext()
     )
+
+
+def test_log_installation_results(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that a failed installation and failing plugins reach the log"""
+    plugin = PythonCodeWorkflowPlugin(init_code=PythonCode(""), execute_code=PythonCode(""))
+    plugin.log_installation_results(
+        {
+            "broken-package": InstallationResult(
+                success=False, output="no matching distribution", forbidden=False
+            ),
+            "unregistered-package": InstallationResult(
+                success=True,
+                output="Installed 1 package",
+                forbidden=False,
+                plugin_errors=["MyPlugin: boom"],
+            ),
+            "fine-package": InstallationResult(success=True, output="", forbidden=False),
+        }
+    )
+    assert "Installation of broken-package failed: no matching distribution" in caplog.text
+    assert "unregistered-package was installed, but plugins failed to register" in caplog.text
+    assert "fine-package" not in caplog.text
