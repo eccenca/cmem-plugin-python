@@ -58,6 +58,13 @@ bump = true
 warn_return_any = true
 ignore_missing_imports = true
 
+# Deliberately empty. pytest walks upward until a file *loads* a configuration,
+# and only the presence of this table makes pyproject.toml one - without it the
+# walk carries on into the parent directories, where any pytest.ini, tox.ini or
+# setup.cfg, even an empty one, would set this project's rootdir and could push
+# its own addopts into this test suite. Do not tidy it away.
+[tool.pytest.ini_options]
+
 [tool.coverage.report]
 exclude_also = [
     "def __repr__",
@@ -96,10 +103,12 @@ ignore = [
     "ISC001",  # single-line-implicit-string-concatenation
     "PD",      # opinionated linting for pandas code
     "TRY003",  # Avoid specifying long messages outside the exception class
+    "TRY400",  # PluginLogger has no exception(), so error() is the only option
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101",    # asserts allowed in tests
     "ARG",     # unused function args (pytest fixtures)
+    "PLR2004", # in an assertion the expected value is the literal
 ]
